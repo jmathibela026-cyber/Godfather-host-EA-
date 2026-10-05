@@ -187,7 +187,7 @@ const SYMS=['XAUUSD','EURUSD','GBPUSD','USDJPY','AUDUSD','USDCAD','NZDUSD','USDC
 const STRATS=['ICT','SMC','Candlestick Patterns','Trend Following','Liquidity Sweeps','Order Blocks','Fair Value Gaps'];
 const def={lic:null,plat:'MT5',broker:'',login:'',linked:false,syms:['XAUUSD'],lot:0.05,strats:['ICT','SMC'],conf:85,maxt:5,api:'',logs:[],pos:[],running:false};
 let S;try{S=Object.assign({},def,JSON.parse(localStorage.getItem('gf')||'{}'))}catch(e){S={...def}}
-const DEFAULT_API=''; // <- put your server URL here once, e.g. 'https://godfather-ea.onrender.com'
+const DEFAULT_API='https://godfather-ea-hosting-srever.onrender.com'; // <- put your server URL here once, e.g. 'https://godfather-ea.onrender.com'
 try{const q=new URLSearchParams(location.search).get('api');if(q&&/^https?:\/\//.test(q))S.api=q.replace(/\/$/,'')}catch(e){}
 if(!S.api)S.api=DEFAULT_API;
 const save=()=>{try{localStorage.setItem('gf',JSON.stringify(S))}catch(e){}};
