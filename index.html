@@ -85,7 +85,7 @@ input[type=range]{width:100%;accent-color:var(--p2)}
 <!-- HOME -->
 <section class="screen on" id="s-home">
   <div class="hdr"><h2>Godfather-EA</h2><span class="chip"><span class="dot" id="hdot"></span><span id="hsrv">Server offline</span></span></div>
-  <div class="hero"><div class="crest">G</div><h1>Godfather Host</h1><p>Always-on EA hosting for MT4 &amp; MT5</p></div>
+  <div class="hero"><div class="crest" id="hcrest">G</div><h1 id="hname">Godfather Host</h1><p id="hsub">Always-on EA hosting for MT4 &amp; MT5</p></div>
   <button class="pill" data-go="link">⛓ Link MT4 / MT5 <small id="hacc">Not linked</small></button>
   <button class="pill" data-go="pairs">◎ Pairs <small id="hpairs">0 selected</small></button>
   <button class="pill" id="hstart">▶ <span id="hstartl">Start</span><small id="hlot"></small></button>
@@ -202,7 +202,7 @@ const validFmt=k=>/^GF-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(k)&&k.slice(-1
 async function activate(){
   const k=$('#key').value.trim().toUpperCase();$('#gerr').textContent='';
   if(!validFmt(k)){$('#gerr').textContent='Invalid licence key.';return}
-  if(S.api){try{const r=await fetch(S.api+'/license/activate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:k,device:navigator.userAgent})});const j=await r.json();if(!r.ok||!j.ok){$('#gerr').textContent=j.error||'Key rejected or already used.';return}}catch(e){$('#gerr').textContent='Cannot reach licence server.';return}}
+  if(S.api){try{const r=await fetch(S.api+'/license/activate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:k,device:navigator.userAgent})});const j=await r.json();if(!r.ok||!j.ok){$('#gerr').textContent=j.error||'Key rejected or already used.';return}S.robot=j.robot||null}catch(e){$('#gerr').textContent='Cannot reach licence server.';return}}
   S.lic=k;save();$('#gate').classList.remove('on');log('Licence activated');render();toast('Activated');
 }
 
@@ -233,6 +233,8 @@ function render(){
   const b=$('#engbtn');b.textContent=S.running?'■ Stop engine':'▶ Start engine';b.classList.toggle('stop',S.running);
   $('#licinfo').textContent=S.lic?`Active · ${S.lic.slice(0,7)}••••-••••`:'Not activated';
   $('#api').value=S.api||'';renderPos();renderLogs();
+  const R=S.robot,cr=$('#hcrest');$('#hname').textContent=R?R.name:'Godfather Host';$('#hsub').textContent=R?(R.author?'by '+R.author+' · ':'')+R.platform:'Always-on EA hosting for MT4 & MT5';
+  if(R&&R.cover){cr.textContent='';cr.style.backgroundImage=`url(${R.cover})`;cr.style.backgroundSize='cover';cr.style.backgroundPosition='center'}else{cr.textContent='G';cr.style.backgroundImage=''}
 }
 
 /* ---- link account ---- */

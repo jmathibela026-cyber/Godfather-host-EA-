@@ -41,13 +41,13 @@ label.ck{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(-
 </div>
 
 <div id="main" class="hide">
-  <div class="tabs"><button class="tab on" data-t="gen">Licence keys</button><button class="tab" data-t="men">Mentors</button><button class="tab" data-t="all">All keys</button></div>
+  <div class="tabs"><button class="tab on" data-t="gen">Licence keys</button><button class="tab" data-t="rob">Robots</button><button class="tab" data-t="men">Mentors</button><button class="tab" data-t="all">All keys</button></div>
 
   <div id="t-gen">
     <div class="card">
       <p class="lbl">Generate licence key</p>
       <input id="client" type="text" placeholder="Client name" autocomplete="off">
-      <input id="ea" type="text" placeholder="Expert Advisor (robot name)" autocomplete="off">
+      <select id="ea"><option value="">Select Expert Advisor…</option><option value="__new">＋ Add a new EA</option></select>
       <input id="mentor" type="email" placeholder="Mentor email (optional)" autocomplete="off">
       <p class="lbl">Subscription</p>
       <div class="plans" id="plans">
@@ -60,6 +60,19 @@ label.ck{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(-
     </div>
     <div class="card hide" id="outc"><p class="lbl">Licence key</p><div class="out" id="out"></div>
       <button class="btn" id="copy">Copy key</button><button class="btn ghost" id="mail" style="margin-top:10px">Draft email</button></div>
+  </div>
+
+  <div id="t-rob" class="hide">
+    <div class="card"><p class="lbl">Add a new EA</p>
+      <input id="rname" type="text" placeholder="EA name" autocomplete="off">
+      <input id="rauthor" type="text" placeholder="Author (optional)" autocomplete="off">
+      <p class="lbl">Platform</p>
+      <div class="plans" style="grid-template-columns:1fr 1fr"><button class="plan on" data-pl="MT5">MT5</button><button class="plan" data-pl="MT4">MT4</button></div>
+      <p class="lbl">Cover image (optional)</p>
+      <input id="rcover" type="file" accept="image/*" style="margin-bottom:12px;color:var(--mut)">
+      <img id="rprev" alt="" style="display:none;width:100%;max-height:160px;object-fit:cover;border-radius:12px;margin-bottom:12px">
+      <button class="btn" id="radd">Add EA</button></div>
+    <div class="card"><p class="lbl">Your EAs</p><div id="rlist"></div></div>
   </div>
 
   <div id="t-men" class="hide">
@@ -90,16 +103,26 @@ $('#srv').value=SRV;
 $('#go').onclick=async()=>{
   SRV=$('#srv').value.trim().replace(/\/$/,'');TOK=$('#tok').value;$('#lerr').textContent='';
   if(!/^https?:\/\//.test(SRV)||!TOK){$('#lerr').textContent='Enter the server URL and admin token.';return}
-  try{await api('/admin/keys');ls.set('gfa_srv',SRV);$('#login').classList.add('hide');$('#main').classList.remove('hide');$('#tok').value='';loadMentors();loadKeys()}
+  try{await api('/admin/keys');ls.set('gfa_srv',SRV);$('#login').classList.add('hide');$('#main').classList.remove('hide');$('#tok').value='';loadRobots();loadMentors();loadKeys()}
   catch(e){TOK='';$('#lerr').textContent=e.message==='Unauthorized'?'Wrong admin token.':'Cannot reach server.'}};
 $('#out2').onclick=()=>{TOK='';$('#main').classList.add('hide');$('#login').classList.remove('hide')};
-$$('.tabs:first-child .tab[data-t]').forEach(b=>b.onclick=()=>{$$('.tab[data-t]').forEach(x=>x.classList.toggle('on',x===b));['gen','men','all'].forEach(t=>$('#t-'+t).classList.toggle('hide',t!==b.dataset.t))});
+$$('.tabs:first-child .tab[data-t]').forEach(b=>b.onclick=()=>{$$('.tab[data-t]').forEach(x=>x.classList.toggle('on',x===b));['gen','rob','men','all'].forEach(t=>$('#t-'+t).classList.toggle('hide',t!==b.dataset.t))});
 /* generate */
-const upd=()=>$('#gen').disabled=!(plan&&$('#client').value.trim()&&$('#conf').checked);
+const upd=()=>$('#gen').disabled=!(plan&&$('#client').value.trim()&&$('#ea').value&&$('#ea').value!=='__new'&&$('#conf').checked);
 $$('.plan').forEach(b=>b.onclick=()=>{plan=b.dataset.p;$$('.plan').forEach(x=>x.classList.toggle('on',x===b));upd()});
-['client','conf'].forEach(i=>$('#'+i).addEventListener('input',upd));
+['client','conf','ea'].forEach(i=>$('#'+i).addEventListener('input',upd));
+$('#ea').addEventListener('change',()=>{if($('#ea').value==='__new'){$('#ea').value='';$$('.tab[data-t]').find(x=>x.dataset.t==='rob').click()}upd()});
+/* robots */
+let robots={},rplat='MT5',rcover='';
+$$('[data-pl]').forEach(b=>b.onclick=()=>{rplat=b.dataset.pl;$$('[data-pl]').forEach(x=>x.classList.toggle('on',x===b))});
+$('#rcover').onchange=e=>{const f=e.target.files[0];if(!f)return;const im=new Image();im.onload=()=>{const w=480,sc=Math.min(1,w/im.width),c=document.createElement('canvas');c.width=im.width*sc;c.height=im.height*sc;c.getContext('2d').drawImage(im,0,0,c.width,c.height);rcover=c.toDataURL('image/jpeg',.8);const p=$('#rprev');p.src=rcover;p.style.display='block';URL.revokeObjectURL(im.src)};im.src=URL.createObjectURL(f)};
+async function loadRobots(){try{robots=(await api('/admin/robots')).robots;renderR()}catch(e){}}
+function renderR(){const e=Object.entries(robots);
+  $('#rlist').innerHTML=e.length?e.sort((a,b)=>b[1].created-a[1].created).map(([id,r])=>`<div class="row">${r.cover?`<img src="${r.cover}" alt="" style="width:44px;height:44px;border-radius:10px;object-fit:cover">`:''}<div class="m"><b>${esc(r.name)}</b><small>${esc(r.author||'—')} · ${r.platform} · <span class="${r.active?'on-t':'off-t'}">${r.active?'Active':'Disabled'}</span></small></div><button class="pill" data-r="${id}">${r.active?'Disable':'Enable'}</button></div>`).join(''):'<p class="lbl">No EAs yet</p>';
+  const cur=$('#ea').value;$('#ea').innerHTML='<option value="">Select Expert Advisor…</option>'+e.filter(([,r])=>r.active).map(([id,r])=>`<option value="${id}">${esc(r.name)} (${r.platform})</option>`).join('')+'<option value="__new">＋ Add a new EA</option>';$('#ea').value=robots[cur]?cur:'';upd()}
+$('#radd').onclick=async()=>{try{await api('/admin/robots','POST',{name:$('#rname').value,author:$('#rauthor').value,platform:rplat,cover:rcover});$('#rname').value='';$('#rauthor').value='';$('#rcover').value='';rcover='';$('#rprev').style.display='none';toast('EA added');loadRobots()}catch(e){toast(e.message)}};
 $('#gen').onclick=async()=>{try{
-  const r=await api('/admin/keys','POST',{client:$('#client').value.trim(),ea:$('#ea').value.trim(),plan,mentorEmail:$('#mentor').value.trim()});
+  const r=await api('/admin/keys','POST',{client:$('#client').value.trim(),robotId:$('#ea').value,plan,mentorEmail:$('#mentor').value.trim()});
   lastKey=r.keys[0];$('#out').textContent=lastKey;$('#outc').classList.remove('hide');$('#conf').checked=false;upd();loadKeys();toast('Key generated')}catch(e){toast(e.message)}};
 $('#copy').onclick=async()=>{try{await navigator.clipboard.writeText(lastKey);toast('Copied')}catch(e){toast('Copy failed — select the key manually')}};
 $('#mail').onclick=()=>{const c=$('#client').value.trim();location.href='mailto:?subject='+encodeURIComponent('Your Godfather-EA licence key')+'&body='+encodeURIComponent(`Hi ${c},\n\nYour licence key: ${lastKey}\n\nOpen the Godfather-EA app and enter it once to activate. The key is single-use.\n`)};
@@ -111,7 +134,8 @@ function renderM(){const e=Object.entries(mentors),a=e.filter(([,m])=>m.active).
   $('#mlist').innerHTML=v.length?v.map(([id,m])=>`<div class="row"><div class="m"><b>${esc(m.email)}</b><small>${id} · <span class="${m.active?'on-t':'off-t'}">${m.active?'Active':'Deactivated'}</span></small></div><button class="pill" data-m="${id}">${m.active?'Deactivate':'Activate'}</button></div>`).join(''):'<p class="lbl">None</p>'}
 $$('[data-f]').forEach(b=>b.onclick=()=>{mf=b.dataset.f;$$('[data-f]').forEach(x=>x.classList.toggle('on',x===b));renderM()});
 $('#mgen').onclick=async()=>{try{const r=await api('/admin/mentors','POST',{email:$('#memail').value});const o=$('#mout');o.textContent=r.id;o.classList.remove('hide');toast(r.existing?'Mentor already exists':'Mentor ID created');$('#memail').value='';loadMentors()}catch(e){toast(e.message)}};
-document.addEventListener('click',async e=>{const b=e.target.closest('[data-m]');if(b){const id=b.dataset.m;try{await api(`/admin/mentors/${id}/toggle`,'POST',{active:!mentors[id].active});loadMentors()}catch(x){toast(x.message)}}
+document.addEventListener('click',async e=>{const rb=e.target.closest('[data-r]');if(rb){const id=rb.dataset.r;try{await api(`/admin/robots/${id}/toggle`,'POST',{active:!robots[id].active});loadRobots()}catch(x){toast(x.message)}}
+  const b=e.target.closest('[data-m]');if(b){const id=b.dataset.m;try{await api(`/admin/mentors/${id}/toggle`,'POST',{active:!mentors[id].active});loadMentors()}catch(x){toast(x.message)}}
   const k=e.target.closest('[data-k]');if(k){const id=k.dataset.k;try{await api(`/admin/keys/${id}/revoke`,'POST',{active:k.dataset.a==='1'});loadKeys()}catch(x){toast(x.message)}}});
 /* all keys */
 async function loadKeys(){try{const ks=(await api('/admin/keys')).keys;const e=Object.entries(ks).sort((a,b)=>b[1].created-a[1].created);
