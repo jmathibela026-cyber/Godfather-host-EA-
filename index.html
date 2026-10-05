@@ -187,6 +187,9 @@ const SYMS=['XAUUSD','EURUSD','GBPUSD','USDJPY','AUDUSD','USDCAD','NZDUSD','USDC
 const STRATS=['ICT','SMC','Candlestick Patterns','Trend Following','Liquidity Sweeps','Order Blocks','Fair Value Gaps'];
 const def={lic:null,plat:'MT5',broker:'',login:'',linked:false,syms:['XAUUSD'],lot:0.05,strats:['ICT','SMC'],conf:85,maxt:5,api:'',logs:[],pos:[],running:false};
 let S;try{S=Object.assign({},def,JSON.parse(localStorage.getItem('gf')||'{}'))}catch(e){S={...def}}
+const DEFAULT_API=''; // <- put your server URL here once, e.g. 'https://godfather-ea.onrender.com'
+try{const q=new URLSearchParams(location.search).get('api');if(q&&/^https?:\/\//.test(q))S.api=q.replace(/\/$/,'')}catch(e){}
+if(!S.api)S.api=DEFAULT_API;
 const save=()=>{try{localStorage.setItem('gf',JSON.stringify(S))}catch(e){}};
 const toast=m=>{const t=$('#toast');t.textContent=m;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2200)};
 const ts=()=>new Date().toTimeString().slice(0,8);
@@ -246,13 +249,14 @@ $('#linkbtn').onclick=async()=>{
 
 /* ---- engine (demo simulation unless a backend is configured) ---- */
 let timer=null;
-function startEngine(){
+async function startEngine(){
   if(!S.linked){toast('Link your MT4/MT5 account first');go('link');return}
   if(!S.strats.length){toast('Pick at least one strategy');return}
-  S.running=true;save();log(`Engine started — ${S.syms.join(', ')} · min confidence ${S.conf}%`);render();tick()}
-function stopEngine(){S.running=false;save();clearTimeout(timer);log('Engine stopped');render()}
+  if(S.api){try{const r=await fetch(S.api+'/engine/start',{method:'POST',headers:{'Content-Type':'application/json','X-License':S.lic},body:JSON.stringify({symbols:S.syms,lot:S.lot,conf:S.conf,maxt:S.maxt,strats:S.strats})});const j=await r.json();if(!r.ok){toast(j.error||'Engine refused to start');return}if(j.dryRun)toast('Server is in DRY RUN — no real orders')}catch(e){toast('Server unreachable');return}S.since=0}
+  S.running=true;save();if(!S.api)log(`Engine started — ${S.syms.join(', ')} · min confidence ${S.conf}%`);render();tick()}
+function stopEngine(){S.running=false;save();clearTimeout(timer);if(S.api){fetch(S.api+'/engine/stop',{method:'POST',headers:{'X-License':S.lic}}).catch(()=>{})}else log('Engine stopped');render()}
 function tick(){clearTimeout(timer);if(!S.running)return;
-  if(S.api){fetch(S.api+'/engine/state',{headers:{'X-License':S.lic}}).then(r=>r.json()).then(j=>{S.pos=j.positions||S.pos;(j.log||[]).forEach(l=>log(l));render()}).catch(()=>{})}
+  if(S.api){fetch(S.api+'/engine/state?since='+(S.since||0),{headers:{'X-License':S.lic}}).then(r=>r.json()).then(j=>{if(!j.ok)return;S.pos=j.positions||[];(j.log||[]).forEach(l=>{S.logs.push(l)});S.logs=S.logs.slice(-200);S.since=j.next;if(j.running===false&&S.running){S.running=false;toast('Engine stopped by server')}save();render()}).catch(()=>{})}
   else{ /* DEMO: no real analysis or trades */
     const sym=S.syms[Math.floor(Math.random()*S.syms.length)]||'XAUUSD',c=Math.round(60+Math.random()*38);
     if(c>=S.conf&&S.pos.length<S.maxt){const side=Math.random()>.5?'BUY':'SELL',px=2000+Math.random()*100;S.pos.push({id:Math.floor(Math.random()*9e8),sym,side,lot:S.lot,sl:(px+(side==='BUY'?-8:8)).toFixed(2),tp:(px+(side==='BUY'?12:-12)).toFixed(2),pl:0});log(`[DEMO] ${sym}: ${side} signal (${c}%) — simulated`)}
@@ -263,7 +267,7 @@ $('#engbtn').onclick=()=>S.running?stopEngine():startEngine();
 $('#hstart').onclick=()=>{go('smart');S.running?stopEngine():startEngine()};
 $('#conf').oninput=e=>{S.conf=+e.target.value;$('#confv').textContent=S.conf;save()};
 $('#maxt').oninput=e=>{S.maxt=+e.target.value;$('#maxv').textContent=S.maxt;save()};
-document.addEventListener('click',e=>{const x=e.target.closest('[data-close]');if(!x)return;const id=+x.dataset.close;S.pos=S.pos.filter(p=>p.id!==id);save();log(`Closed position #${id}`);renderPos()});
+document.addEventListener('click',e=>{const x=e.target.closest('[data-close]');if(!x)return;let id=x.dataset.close;if(!S.api)id=+id;if(S.api){fetch(S.api+'/positions/close',{method:'POST',headers:{'Content-Type':'application/json','X-License':S.lic},body:JSON.stringify({id})}).then(r=>r.json()).then(j=>toast(j.ok?'Close sent':(j.error||'Close failed'))).catch(()=>toast('Server unreachable'));return}S.pos=S.pos.filter(p=>p.id!==id);save();log(`Closed position #${id}`);renderPos()});
 
 /* ---- scanner ---- */
 let img=null;
@@ -273,7 +277,7 @@ $('#file').onchange=e=>take(e.target.files[0]);$('#cam').onchange=e=>take(e.targ
 $('#scanbtn').onclick=async()=>{
   if(!img){toast('Upload or capture a chart first');return}
   let d=null;
-  if(S.api){try{const r=await fetch(S.api+'/scan',{method:'POST',headers:{'Content-Type':'application/json','X-License':S.lic},body:JSON.stringify({image:img})});d=await r.json()}catch(e){toast('Scan server unreachable');return}}
+  if(S.api){try{const r=await fetch(S.api+'/scan',{method:'POST',headers:{'Content-Type':'application/json','X-License':S.lic},body:JSON.stringify({image:img})});const j=await r.json();if(r.ok&&j.ok)d=j;else toast(j.error||'Scan unavailable')}catch(e){toast('Scan server unreachable');return}}
   const demo=!d;
   if(demo){d={bias:'— (demo)',entry:'—',sl:'—',tp:'—',note:'Demo mode: no real chart analysis ran. Set a Server API in Settings to enable real reads.'}}
   $('#res').innerHTML=[['Bias',d.bias],['Entry zone',d.entry],['Stop loss',d.sl],['Take profit',d.tp]].map(([a,b])=>`<div><small>${a}</small><b>${b}</b></div>`).join('');
