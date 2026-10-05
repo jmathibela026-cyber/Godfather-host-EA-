@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#07050d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<title>Godfather-EA</title>
+<style>
+:root{--bg:#07050d;--card:#100b1c;--card2:#160f27;--line:#2a1c47;--p:#a53cff;--p2:#d54bff;--txt:#f1ecfb;--mut:#8f84a8;--ok:#31e08a;--bad:#ff3b57;--blue:#3d8bff;--glow:0 0 18px rgba(165,60,255,.55)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
+body{background:radial-gradient(120% 60% at 50% -10%,#3a0f6b 0%,transparent 60%),var(--bg)}
+button,input,select{font:inherit;color:inherit}
+#app{max-width:520px;margin:0 auto;height:100%;display:flex;flex-direction:column;position:relative}
+.screen{display:none;flex:1;overflow-y:auto;padding:calc(env(safe-area-inset-top) + 18px) 18px 24px}
+.screen.on{display:block}
+.hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.hdr h2{margin:0;font-size:13px;letter-spacing:.2em;text-transform:uppercase}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:99px;border:1px solid var(--line);background:var(--card);font-size:12px;color:var(--mut)}
+.chip.on{border-color:var(--p);color:#fff;background:#26104a;box-shadow:var(--glow)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--bad)}.dot.ok{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.card{background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:16px}
+.lbl{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--mut);margin:0 0 10px}
+.hero{text-align:center;padding:24px 0 8px}
+.crest{width:120px;height:120px;margin:0 auto 14px;border-radius:50%;display:grid;place-items:center;font-size:56px;font-weight:800;background:radial-gradient(circle,#3b1070,#12071f 70%);border:2px solid var(--p2);box-shadow:var(--glow),inset 0 0 30px rgba(213,75,255,.35);animation:pulse 3s infinite}
+@keyframes pulse{50%{box-shadow:0 0 34px rgba(213,75,255,.8),inset 0 0 30px rgba(213,75,255,.5)}}
+.hero h1{margin:0;font-size:26px;letter-spacing:.12em;text-transform:uppercase}
+.hero p{margin:6px 0 12px;color:var(--mut);font-size:14px}
+.pill{width:100%;display:flex;align-items:center;gap:12px;padding:16px 18px;margin-bottom:12px;border-radius:99px;border:1px solid var(--line);background:linear-gradient(180deg,#1a1030,#0e0818);font-size:16px;text-align:left;cursor:pointer}
+.pill:active{transform:scale(.98);border-color:var(--p)}
+.pill small{margin-left:auto;color:var(--mut);font-size:12px}
+.chips{display:flex;flex-wrap:wrap;gap:10px}
+.chips .chip{cursor:pointer;padding:10px 16px;font-size:14px}
+input[type=text],input[type=password],input[type=number],select{width:100%;padding:14px 16px;border-radius:14px;border:1px solid var(--line);background:#0b0714;margin-bottom:12px;outline:none}
+input:focus,select:focus{border-color:var(--p);box-shadow:var(--glow)}
+input[type=range]{width:100%;accent-color:var(--p2)}
+.seg{display:flex;gap:10px;margin-bottom:12px}.seg .chip{flex:1;justify-content:center;padding:12px}
+.cta{position:sticky;bottom:0;padding-top:12px;background:linear-gradient(transparent,var(--bg) 40%)}
+.btn{width:100%;padding:17px;border-radius:16px;border:0;font-weight:700;letter-spacing:.14em;text-transform:uppercase;background:linear-gradient(180deg,#b24dff,#7a1fd0);box-shadow:var(--glow);cursor:pointer}
+.btn:active{transform:scale(.98)}.btn.stop{background:linear-gradient(180deg,#ff4d63,#d0142f);box-shadow:0 0 18px rgba(255,59,87,.5)}
+.btn.ghost{background:transparent;border:1px solid var(--line);box-shadow:none;letter-spacing:.06em}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.pos{display:flex;align-items:center;gap:10px;padding:12px 0;border-top:1px solid var(--line)}.pos:first-of-type{border-top:0}
+.pos b{font-size:14px}.pos small{display:block;color:var(--mut);font-size:11px}.pos .pl{margin-left:auto;font-weight:700}
+.pos .x{width:30px;height:30px;border-radius:8px;border:1px solid #5a1e2c;background:#2a0f17;color:var(--bad);cursor:pointer}
+.up{color:var(--ok)}.dn{color:var(--bad)}
+.log{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:#b9a6e0;line-height:1.6;max-height:220px;overflow:auto;white-space:pre-wrap}
+.steps{counter-reset:s}.step{display:flex;gap:12px;padding:10px 0}.step i{flex:none;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:12px;font-weight:700;border:1px solid var(--p);color:var(--p2)}
+.step b{display:block;font-size:14px}.step span{font-size:12.5px;color:var(--mut)}
+.feat h4{margin:0 0 4px;font-size:15px}.feat p{margin:0;font-size:13px;color:var(--mut);line-height:1.5}
+.tabs{display:flex;align-items:flex-end;justify-content:space-around;padding:8px 6px calc(env(safe-area-inset-bottom) + 8px);background:linear-gradient(180deg,rgba(60,15,110,.15),rgba(90,25,160,.55));border-top:1px solid var(--line);backdrop-filter:blur(10px)}
+.tab{flex:1;background:none;border:0;color:var(--mut);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;display:flex;flex-direction:column;align-items:center;gap:5px;padding:6px 0;cursor:pointer}
+.tab svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tab.on{color:#fff}.tab.on svg{filter:drop-shadow(0 0 6px var(--p2))}
+.tab.home{margin-top:-26px}.tab.home .o{width:58px;height:58px;border-radius:50%;display:grid;place-items:center;background:#12071f;border:2px solid var(--p2);box-shadow:var(--glow)}
+#gate{position:fixed;inset:0;z-index:20;background:var(--bg);display:none;padding:30px 22px;overflow:auto}
+#gate.on{display:block}#gate .in{max-width:480px;margin:6vh auto 0}
+.note{font-size:12px;color:var(--mut);line-height:1.5}.err{color:var(--bad);font-size:13px;min-height:18px;margin-bottom:8px}
+#toast{position:fixed;left:50%;bottom:110px;transform:translateX(-50%);background:#26104a;border:1px solid var(--p);padding:10px 16px;border-radius:99px;font-size:13px;opacity:0;pointer-events:none;transition:.25s;z-index:30}
+#toast.on{opacity:1}
+.res{display:grid;grid-template-columns:1fr 1fr;gap:10px}.res div{background:#0b0714;border:1px solid var(--line);border-radius:14px;padding:12px}.res small{display:block;color:var(--mut);font-size:11px;letter-spacing:.1em;text-transform:uppercase}.res b{font-size:17px}
+#prev{width:100%;border-radius:14px;margin-bottom:12px;display:none;border:1px solid var(--line)}
+.demo{display:inline-block;font-size:10px;letter-spacing:.14em;padding:3px 8px;border-radius:99px;background:#3a2a05;color:#ffc24d;margin-left:8px;vertical-align:middle}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ACTIVATION -->
+<div id="gate"><div class="in">
+  <div class="hero"><div class="crest">G</div><h1>Godfather-EA</h1><p>Host your Expert Advisors in the cloud</p></div>
+  <div class="card">
+    <p class="lbl">Activate with licence key</p>
+    <input id="key" type="text" placeholder="GF-XXXX-XXXX-XXXX" autocapitalize="characters" autocomplete="off">
+    <div class="err" id="gerr"></div>
+    <p class="note">Your mentor issues a single-use licence key tied to the robot. Enter it once to activate.</p>
+  </div>
+  <div class="cta"><button class="btn" id="act">Activate</button></div>
+</div></div>
+
+<!-- HOME -->
+<section class="screen on" id="s-home">
+  <div class="hdr"><h2>Godfather-EA</h2><span class="chip"><span class="dot" id="hdot"></span><span id="hsrv">Server offline</span></span></div>
+  <div class="hero"><div class="crest">G</div><h1>Godfather Host</h1><p>Always-on EA hosting for MT4 &amp; MT5</p></div>
+  <button class="pill" data-go="link">⛓ Link MT4 / MT5 <small id="hacc">Not linked</small></button>
+  <button class="pill" data-go="pairs">◎ Pairs <small id="hpairs">0 selected</small></button>
+  <button class="pill" id="hstart">▶ <span id="hstartl">Start</span><small id="hlot"></small></button>
+  <button class="pill" data-go="logs">☰ Logs</button>
+
+  <div class="card"><p class="lbl">How it works</p><div class="steps">
+    <div class="step"><i>01</i><div><b>Get app access</b><span>Install this web app from your browser's menu — Add to Home Screen.</span></div></div>
+    <div class="step"><i>02</i><div><b>Get a licence key</b><span>Your mentor issues a single-use key tied to the robot. Enter it once.</span></div></div>
+    <div class="step"><i>03</i><div><b>Link MT4 or MT5</b><span>Connect your broker account, choose symbols and lot size, press start.</span></div></div>
+  </div></div>
+  <p class="lbl">More than hosting — a trading cockpit</p>
+  <div class="card feat"><h4>⚡ Always-on execution</h4><p>Trades fire from our infrastructure with roughly 1 ms routing latency, independent of your phone, battery or signal.</p></div>
+  <div class="card feat"><h4>🔍 Chart scanner</h4><p>Upload or capture a chart and get a structured read — bias, entry zone, stop loss and take profit.</p></div>
+  <div class="card feat"><h4>🧠 Smart Trade engine</h4><p>Scans your chosen pairs continuously and only acts on high-confidence setups.</p></div>
+</section>
+
+<!-- LINK MT -->
+<section class="screen" id="s-link">
+  <div class="hdr"><h2>MetaTrader</h2><span class="chip"><span class="dot" id="ldot"></span><span id="lst">Not linked</span></span></div>
+  <div class="card">
+    <p class="lbl">Platform</p>
+    <div class="seg"><button class="chip" data-plat="MT4">MT4</button><button class="chip" data-plat="MT5">MT5</button></div>
+    <p class="lbl">Broker account</p>
+    <input id="broker" type="text" placeholder="Broker server (e.g. ICMarkets-Live01)" autocomplete="off">
+    <input id="login" type="text" inputmode="numeric" placeholder="Account number" autocomplete="off">
+    <input id="pass" type="password" placeholder="Investor / trading password" autocomplete="off">
+    <p class="note">Credentials are used only to connect your account.</p>
+  </div>
+  <div class="card"><p class="lbl">Symbols</p><div class="chips" id="symchips"></div></div>
+  <div class="card"><p class="lbl">Lot size</p>
+    <div class="row"><button class="chip" id="lm">−</button><input id="lot" type="number" step="0.01" min="0.01" value="0.05" style="text-align:center;margin:0;max-width:130px"><button class="chip" id="lp">+</button></div>
+  </div>
+  <div class="cta"><button class="btn" id="linkbtn">Link account &amp; save</button></div>
+</section>
+
+<!-- SMART ENGINE -->
+<section class="screen" id="s-smart">
+  <div class="hdr"><h2>Smart Trade Engine</h2><span class="chip"><span class="dot" id="edot"></span><span id="est">Stopped</span></span></div>
+  <div class="card"><p class="lbl">Strategies</p><div class="chips" id="stratchips"></div></div>
+  <div class="card"><p class="lbl">Min confidence — <span id="confv">85</span>%</p><input type="range" id="conf" min="50" max="99" value="85"></div>
+  <div class="card"><p class="lbl">Max concurrent trades — <span id="maxv">5</span></p><input type="range" id="maxt" min="1" max="10" value="5"></div>
+  <div class="card"><p class="lbl">Open positions</p><div id="pos"><p class="note">No open positions.</p></div></div>
+  <div class="card"><p class="lbl">Activity log</p><div class="log" id="log2">Waiting for the engine to start…</div></div>
+  <div class="cta"><button class="btn" id="engbtn">▶ Start engine</button></div>
+</section>
+
+<!-- SCANNER -->
+<section class="screen" id="s-scan">
+  <div class="hdr"><h2>Chart Scanner</h2></div>
+  <div class="card">
+    <p class="lbl">Upload or capture a chart</p>
+    <img id="prev" alt="chart preview">
+    <input id="file" type="file" accept="image/*" hidden>
+    <input id="cam" type="file" accept="image/*" capture="environment" hidden>
+    <div class="seg"><button class="chip" id="pick">Upload</button><button class="chip" id="shoot">Capture</button></div>
+  </div>
+  <div class="card" id="resc" style="display:none"><p class="lbl">Read <span class="demo" id="demotag">DEMO</span></p>
+    <div class="res" id="res"></div><p class="note" id="resn" style="margin-top:10px"></p></div>
+  <div class="cta"><button class="btn" id="scanbtn">Scan chart</button></div>
+</section>
+
+<!-- PAIRS -->
+<section class="screen" id="s-pairs">
+  <div class="hdr"><h2>Pairs</h2><button class="chip" data-go="home">Done</button></div>
+  <div class="card"><p class="lbl">Select symbols to trade</p><div class="chips" id="pairchips"></div></div>
+</section>
+
+<!-- LOGS -->
+<section class="screen" id="s-logs">
+  <div class="hdr"><h2>Logs</h2><button class="chip" data-go="home">Back</button></div>
+  <div class="card"><div class="log" id="log1" style="max-height:none">No activity yet.</div></div>
+</section>
+
+<!-- SETTINGS -->
+<section class="screen" id="s-set">
+  <div class="hdr"><h2>Settings</h2></div>
+  <div class="card"><p class="lbl">Licence</p><p id="licinfo" class="note"></p></div>
+  <div class="card"><p class="lbl">Server API (optional)</p>
+    <input id="api" type="text" placeholder="https://your-backend.example.com">
+    <p class="note">Leave empty to run in demo mode. When set, the app sends licence activation, link, engine and scan requests to this backend.</p></div>
+  <div class="card"><p class="lbl">Install</p><button class="btn ghost" id="inst">Install app</button>
+    <p class="note" style="margin-top:8px">iPhone: Share → Add to Home Screen. Android: menu → Install app.</p></div>
+  <div class="card"><button class="btn stop" id="reset">Deactivate &amp; reset</button></div>
+</section>
+
+<nav class="tabs">
+  <button class="tab" data-go="smart"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>Smart</button>
+  <button class="tab" data-go="link"><svg viewBox="0 0 24 24"><path d="M3 3v18h18M7 15l4-5 3 3 5-7"/></svg>MetaTrader</button>
+  <button class="tab home on" data-go="home"><span class="o"><svg viewBox="0 0 24 24"><path d="M3 11 12 3l9 8v10H3z"/></svg></span>Home</button>
+  <button class="tab" data-go="scan"><svg viewBox="0 0 24 24"><path d="M3 7V3h4M17 3h4v4M21 17v4h-4M7 21H3v-4M3 12h18"/></svg>Scanner</button>
+  <button class="tab" data-go="set"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg>Settings</button>
+</nav>
+<div id="toast"></div>
+</div>
+
+<script>
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const SYMS=['XAUUSD','EURUSD','GBPUSD','USDJPY','AUDUSD','USDCAD','NZDUSD','USDCHF','BTCUSD','US30','NAS100'];
+const STRATS=['ICT','SMC','Candlestick Patterns','Trend Following','Liquidity Sweeps','Order Blocks','Fair Value Gaps'];
+const def={lic:null,plat:'MT5',broker:'',login:'',linked:false,syms:['XAUUSD'],lot:0.05,strats:['ICT','SMC'],conf:85,maxt:5,api:'',logs:[],pos:[],running:false};
+let S;try{S=Object.assign({},def,JSON.parse(localStorage.getItem('gf')||'{}'))}catch(e){S={...def}}
+const save=()=>{try{localStorage.setItem('gf',JSON.stringify(S))}catch(e){}};
+const toast=m=>{const t=$('#toast');t.textContent=m;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2200)};
+const ts=()=>new Date().toTimeString().slice(0,8);
+const log=m=>{S.logs.push(`[${ts()}] ${m}`);S.logs=S.logs.slice(-200);save();renderLogs()};
+
+/* ---- licence: key GF-AAAA-BBBB-CCCC, last char of CCCC is a checksum of the rest ---- */
+const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const chk=s=>A[[...s.replace(/-/g,'')].reduce((a,c)=>(a*31+c.charCodeAt(0))%A.length,7)];
+const validFmt=k=>/^GF-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(k)&&k.slice(-1)===chk(k.slice(0,-1));
+async function activate(){
+  const k=$('#key').value.trim().toUpperCase();$('#gerr').textContent='';
+  if(!validFmt(k)){$('#gerr').textContent='Invalid licence key.';return}
+  if(S.api){try{const r=await fetch(S.api+'/license/activate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:k,device:navigator.userAgent})});const j=await r.json();if(!r.ok||!j.ok){$('#gerr').textContent=j.error||'Key rejected or already used.';return}}catch(e){$('#gerr').textContent='Cannot reach licence server.';return}}
+  S.lic=k;save();$('#gate').classList.remove('on');log('Licence activated');render();toast('Activated');
+}
+
+/* ---- navigation ---- */
+function go(n){$$('.screen').forEach(s=>s.classList.toggle('on',s.id==='s-'+n));
+  $$('.tab').forEach(t=>t.classList.toggle('on',t.dataset.go===n||(n!=='home'&&0)));
+  if(['pairs','logs'].includes(n))$$('.tab').forEach(t=>t.classList.toggle('on',t.dataset.go==='home'));
+  $('#s-'+n).scrollTop=0}
+document.addEventListener('click',e=>{const g=e.target.closest('[data-go]');if(g)go(g.dataset.go)});
+
+/* ---- render ---- */
+function chipSet(el,items,sel,cb){el.innerHTML='';items.forEach(i=>{const c=document.createElement('button');c.className='chip'+(sel.includes(i)?' on':'');c.textContent=i;c.onclick=()=>{cb(i);};el.appendChild(c)})}
+const toggle=(arr,v)=>arr.includes(v)?arr.filter(x=>x!==v):[...arr,v];
+function renderLogs(){const t=S.logs.length?S.logs.slice().reverse().join('\n'):'No activity yet.';$('#log1').textContent=t;$('#log2').textContent=S.logs.length?S.logs.slice(-30).reverse().join('\n'):'Waiting for the engine to start…'}
+function renderPos(){const el=$('#pos');if(!S.pos.length){el.innerHTML='<p class="note">No open positions.</p>';return}
+  el.innerHTML=S.pos.map(p=>`<div class="pos"><div><b>${p.sym} · ${p.side} · ${p.lot}</b><small>#${p.id} · SL ${p.sl} · TP ${p.tp}</small></div><span class="pl ${p.pl>=0?'up':'dn'}">${p.pl.toFixed(2)}</span><button class="x" data-close="${p.id}">✕</button></div>`).join('')}
+function render(){
+  $('#hdot').className='dot'+(S.linked?' ok':'');$('#hsrv').textContent=S.linked?'Server connected':'Server offline';
+  $('#hacc').textContent=S.linked?`${S.plat} · ${S.login}`:'Not linked';$('#hpairs').textContent=S.syms.length+' selected';
+  $('#hstartl').textContent=S.running?'Stop':'Start';$('#hlot').textContent='Lot '+S.lot;
+  $('#ldot').className='dot'+(S.linked?' ok':'');$('#lst').textContent=S.linked?'Linked':'Not linked';
+  $$('[data-plat]').forEach(b=>b.classList.toggle('on',b.dataset.plat===S.plat));
+  chipSet($('#symchips'),SYMS,S.syms,v=>{S.syms=toggle(S.syms,v);save();render()});
+  chipSet($('#pairchips'),SYMS,S.syms,v=>{S.syms=toggle(S.syms,v);save();render()});
+  chipSet($('#stratchips'),STRATS,S.strats,v=>{S.strats=toggle(S.strats,v);save();render()});
+  $('#lot').value=S.lot;$('#conf').value=S.conf;$('#confv').textContent=S.conf;$('#maxt').value=S.maxt;$('#maxv').textContent=S.maxt;
+  $('#edot').className='dot'+(S.running?' ok':'');$('#est').textContent=S.running?'Running':'Stopped';
+  const b=$('#engbtn');b.textContent=S.running?'■ Stop engine':'▶ Start engine';b.classList.toggle('stop',S.running);
+  $('#licinfo').textContent=S.lic?`Active · ${S.lic.slice(0,7)}••••-••••`:'Not activated';
+  $('#api').value=S.api||'';renderPos();renderLogs();
+}
+
+/* ---- link account ---- */
+$$('[data-plat]').forEach(b=>b.onclick=()=>{S.plat=b.dataset.plat;save();render()});
+$('#lm').onclick=()=>{S.lot=Math.max(.01,+(S.lot-.01).toFixed(2));save();render()};
+$('#lp').onclick=()=>{S.lot=+(S.lot+.01).toFixed(2);save();render()};
+$('#lot').onchange=e=>{S.lot=Math.max(.01,+e.target.value||.01);save();render()};
+$('#linkbtn').onclick=async()=>{
+  const broker=$('#broker').value.trim(),login=$('#login').value.trim(),pw=$('#pass').value;
+  if(!broker||!login||!pw){toast('Fill in server, account and password');return}
+  if(!S.syms.length){toast('Choose at least one symbol');return}
+  if(S.api){try{const r=await fetch(S.api+'/accounts/link',{method:'POST',headers:{'Content-Type':'application/json','X-License':S.lic},body:JSON.stringify({platform:S.plat,server:broker,login,password:pw,symbols:S.syms,lot:S.lot})});if(!r.ok)throw 0}catch(e){toast('Link failed — check details / server');return}}
+  S.broker=broker;S.login=login;S.linked=true;$('#pass').value='';save();log(`Linked ${S.plat} account ${login} @ ${broker}`);render();toast('Account linked');go('home')};
+
+/* ---- engine (demo simulation unless a backend is configured) ---- */
+let timer=null;
+function startEngine(){
+  if(!S.linked){toast('Link your MT4/MT5 account first');go('link');return}
+  if(!S.strats.length){toast('Pick at least one strategy');return}
+  S.running=true;save();log(`Engine started — ${S.syms.join(', ')} · min confidence ${S.conf}%`);render();tick()}
+function stopEngine(){S.running=false;save();clearTimeout(timer);log('Engine stopped');render()}
+function tick(){clearTimeout(timer);if(!S.running)return;
+  if(S.api){fetch(S.api+'/engine/state',{headers:{'X-License':S.lic}}).then(r=>r.json()).then(j=>{S.pos=j.positions||S.pos;(j.log||[]).forEach(l=>log(l));render()}).catch(()=>{})}
+  else{ /* DEMO: no real analysis or trades */
+    const sym=S.syms[Math.floor(Math.random()*S.syms.length)]||'XAUUSD',c=Math.round(60+Math.random()*38);
+    if(c>=S.conf&&S.pos.length<S.maxt){const side=Math.random()>.5?'BUY':'SELL',px=2000+Math.random()*100;S.pos.push({id:Math.floor(Math.random()*9e8),sym,side,lot:S.lot,sl:(px+(side==='BUY'?-8:8)).toFixed(2),tp:(px+(side==='BUY'?12:-12)).toFixed(2),pl:0});log(`[DEMO] ${sym}: ${side} signal (${c}%) — simulated`)}
+    else log(`[DEMO] ${sym}: setup ${c}% < ${S.conf}% — skipped`);
+    S.pos.forEach(p=>p.pl+=(Math.random()-.48)*6);save();renderPos()}
+  timer=setTimeout(tick,4000)}
+$('#engbtn').onclick=()=>S.running?stopEngine():startEngine();
+$('#hstart').onclick=()=>{go('smart');S.running?stopEngine():startEngine()};
+$('#conf').oninput=e=>{S.conf=+e.target.value;$('#confv').textContent=S.conf;save()};
+$('#maxt').oninput=e=>{S.maxt=+e.target.value;$('#maxv').textContent=S.maxt;save()};
+document.addEventListener('click',e=>{const x=e.target.closest('[data-close]');if(!x)return;const id=+x.dataset.close;S.pos=S.pos.filter(p=>p.id!==id);save();log(`Closed position #${id}`);renderPos()});
+
+/* ---- scanner ---- */
+let img=null;
+const take=f=>{if(!f)return;const r=new FileReader();r.onload=()=>{img=r.result;const p=$('#prev');p.src=img;p.style.display='block';$('#resc').style.display='none'};r.readAsDataURL(f)};
+$('#pick').onclick=()=>$('#file').click();$('#shoot').onclick=()=>$('#cam').click();
+$('#file').onchange=e=>take(e.target.files[0]);$('#cam').onchange=e=>take(e.target.files[0]);
+$('#scanbtn').onclick=async()=>{
+  if(!img){toast('Upload or capture a chart first');return}
+  let d=null;
+  if(S.api){try{const r=await fetch(S.api+'/scan',{method:'POST',headers:{'Content-Type':'application/json','X-License':S.lic},body:JSON.stringify({image:img})});d=await r.json()}catch(e){toast('Scan server unreachable');return}}
+  const demo=!d;
+  if(demo){d={bias:'— (demo)',entry:'—',sl:'—',tp:'—',note:'Demo mode: no real chart analysis ran. Set a Server API in Settings to enable real reads.'}}
+  $('#res').innerHTML=[['Bias',d.bias],['Entry zone',d.entry],['Stop loss',d.sl],['Take profit',d.tp]].map(([a,b])=>`<div><small>${a}</small><b>${b}</b></div>`).join('');
+  $('#resn').textContent=d.note||'';$('#demotag').style.display=demo?'inline-block':'none';$('#resc').style.display='block';log('Chart scanned')};
+
+/* ---- settings ---- */
+$('#api').onchange=e=>{S.api=e.target.value.trim().replace(/\/$/,'');save();toast('Saved')};
+$('#reset').onclick=()=>{if(confirm('Deactivate and clear all data on this device?')){try{localStorage.removeItem('gf')}catch(e){}location.reload()}};
+let dp;addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e});
+$('#inst').onclick=()=>{if(dp){dp.prompt()}else toast('Use your browser menu → Add to Home Screen')};
+$('#act').onclick=activate;$('#key').addEventListener('keydown',e=>{if(e.key==='Enter')activate()});
+
+if(!S.lic)$('#gate').classList.add('on');
+render();if(S.running)tick();
+if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+</script>
+</body>
+</html>
