@@ -136,15 +136,19 @@ input[type=range]{width:100%;accent-color:var(--p2)}
 <section class="screen" id="s-scan">
   <div class="hdr"><h2>Chart Scanner</h2></div>
   <div class="card">
+    <div class="seg" id="smode"><button class="chip on" data-sm="live">Live market</button><button class="chip" data-sm="img">Chart image</button></div>
+    <div id="livebox"><p class="lbl">Symbol</p><div class="chips" id="scansym"></div><p class="note" style="margin-top:10px">Runs your strategy rules (H4 sweep → M15 CHoCH) on live prices.</p></div>
+    <div id="imgbox" style="display:none">
     <p class="lbl">Upload or capture a chart</p>
     <img id="prev" alt="chart preview">
     <input id="file" type="file" accept="image/*" hidden>
     <input id="cam" type="file" accept="image/*" capture="environment" hidden>
     <div class="seg"><button class="chip" id="pick">Upload</button><button class="chip" id="shoot">Capture</button></div>
+    </div>
   </div>
   <div class="card" id="resc" style="display:none"><p class="lbl">Read <span class="demo" id="demotag">DEMO</span></p>
     <div class="res" id="res"></div><p class="note" id="resn" style="margin-top:10px"></p></div>
-  <div class="cta"><button class="btn" id="scanbtn">Scan chart</button></div>
+  <div class="cta"><button class="btn" id="scanbtn">Scan</button></div>
 </section>
 
 <!-- PAIRS -->
@@ -232,7 +236,7 @@ function render(){
   $('#edot').className='dot'+(S.running?' ok':'');$('#est').textContent=S.running?'Running':'Stopped';
   const b=$('#engbtn');b.textContent=S.running?'■ Stop engine':'▶ Start engine';b.classList.toggle('stop',S.running);
   $('#licinfo').textContent=S.lic?`Active · ${S.lic.slice(0,7)}••••-••••`:'Not activated';
-  $('#api').value=S.api||'';renderPos();renderLogs();
+  $('#api').value=S.api||'';renderPos();renderLogs();renderScanSyms();
   const R=S.robot,cr=$('#hcrest');$('#hname').textContent=R?R.name:'Godfather Host';$('#hsub').textContent=R?(R.author?'by '+R.author+' · ':'')+R.platform:'Always-on EA hosting for MT4 & MT5';
   if(R&&R.cover){cr.textContent='';cr.style.backgroundImage=`url(${R.cover})`;cr.style.backgroundSize='cover';cr.style.backgroundPosition='center'}else{cr.textContent='G';cr.style.backgroundImage=''}
 }
@@ -272,13 +276,25 @@ $('#maxt').oninput=e=>{S.maxt=+e.target.value;$('#maxv').textContent=S.maxt;save
 document.addEventListener('click',e=>{const x=e.target.closest('[data-close]');if(!x)return;let id=x.dataset.close;if(!S.api)id=+id;if(S.api){fetch(S.api+'/positions/close',{method:'POST',headers:{'Content-Type':'application/json','X-License':S.lic},body:JSON.stringify({id})}).then(r=>r.json()).then(j=>toast(j.ok?'Close sent':(j.error||'Close failed'))).catch(()=>toast('Server unreachable'));return}S.pos=S.pos.filter(p=>p.id!==id);save();log(`Closed position #${id}`);renderPos()});
 
 /* ---- scanner ---- */
-let img=null;
-const take=f=>{if(!f)return;const r=new FileReader();r.onload=()=>{img=r.result;const p=$('#prev');p.src=img;p.style.display='block';$('#resc').style.display='none'};r.readAsDataURL(f)};
+let img=null,smode='live',ssym='';
+$$('[data-sm]').forEach(b=>b.onclick=()=>{smode=b.dataset.sm;$$('[data-sm]').forEach(x=>x.classList.toggle('on',x===b));$('#livebox').style.display=smode==='live'?'block':'none';$('#imgbox').style.display=smode==='img'?'block':'none';$('#resc').style.display='none'});
+function renderScanSyms(){if(!S.syms.includes(ssym))ssym=S.syms[0]||'';chipSet($('#scansym'),S.syms,[ssym],v=>{ssym=v;renderScanSyms()})}
+const take=f=>{if(!f)return;const u=URL.createObjectURL(f),im=new Image();
+  im.onload=()=>{const sc=Math.min(1,1600/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*sc);c.height=Math.round(im.height*sc);c.getContext('2d').drawImage(im,0,0,c.width,c.height);img=c.toDataURL('image/jpeg',.85);URL.revokeObjectURL(u);const p=$('#prev');p.src=img;p.style.display='block';$('#resc').style.display='none'};
+  im.onerror=()=>toast('Could not read that image');im.src=u};
 $('#pick').onclick=()=>$('#file').click();$('#shoot').onclick=()=>$('#cam').click();
 $('#file').onchange=e=>take(e.target.files[0]);$('#cam').onchange=e=>take(e.target.files[0]);
 $('#scanbtn').onclick=async()=>{
-  if(!img){toast('Upload or capture a chart first');return}
   let d=null;
+  if(smode==='live'){
+    if(!S.api){toast('Server not connected');return}
+    if(!ssym){toast('Pick a symbol (Home → Pairs)');return}
+    $('#scanbtn').textContent='Scanning…';
+    try{const r=await fetch(S.api+'/scan/live',{method:'POST',headers:{'Content-Type':'application/json','X-License':S.lic},body:JSON.stringify({symbol:ssym})});const j=await r.json();if(r.ok&&j.ok)d=j;else{toast(j.error||'Scan failed');$('#scanbtn').textContent='Scan';return}}catch(e){toast('Server unreachable');$('#scanbtn').textContent='Scan';return}
+    $('#scanbtn').textContent='Scan';
+    $('#res').innerHTML=[['Bias',d.bias],['Entry zone',d.entry],['Stop loss',d.sl],['Take profit',d.tp]].map(([x,y])=>`<div><small>${x}</small><b>${y}</b></div>`).join('');
+    $('#resn').textContent=ssym+' · '+(d.note||'');$('#demotag').style.display='none';$('#resc').style.display='block';log('Live scan '+ssym+': '+d.bias);return}
+  if(!img){toast('Upload or capture a chart first');return}
   if(S.api){try{const r=await fetch(S.api+'/scan',{method:'POST',headers:{'Content-Type':'application/json','X-License':S.lic},body:JSON.stringify({image:img})});const j=await r.json();if(r.ok&&j.ok)d=j;else toast(j.error||'Scan unavailable')}catch(e){toast('Scan server unreachable');return}}
   const demo=!d;
   if(demo){d={bias:'— (demo)',entry:'—',sl:'—',tp:'—',note:'Demo mode: no real chart analysis ran. Set a Server API in Settings to enable real reads.'}}
