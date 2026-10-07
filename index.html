@@ -109,15 +109,16 @@ input[type=range]{width:100%;accent-color:var(--p2)}
     <p class="lbl">Platform</p>
     <div class="seg"><button class="chip" data-plat="MT4">MT4</button><button class="chip" data-plat="MT5">MT5</button></div>
     <p class="lbl">Broker account</p>
-    <input id="broker" type="text" placeholder="Broker server (e.g. ICMarkets-Live01)" autocomplete="off">
-    <input id="login" type="text" inputmode="numeric" placeholder="Account number" autocomplete="off">
-    <input id="pass" type="password" placeholder="Investor / trading password" autocomplete="off">
-    <p class="note">Credentials are used only to connect your account.</p>
+    <input id="broker" type="text" placeholder="Broker server (e.g. ICMarkets-Live01)" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <input id="login" type="text" inputmode="numeric" placeholder="Account number" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <input id="pass" type="password" placeholder="Trading (master) password, not investor" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <p class="note">Use the master (trading) password, not the investor password. The server name must match your account exactly (e.g. ICMarketsSC-Demo), and MT4/MT5 must match your account type.</p>
   </div>
   <div class="card"><p class="lbl">Symbols</p><div class="chips" id="symchips"></div></div>
   <div class="card"><p class="lbl">Lot size</p>
     <div class="row"><button class="chip" id="lm">−</button><input id="lot" type="number" step="0.01" min="0.01" value="0.05" style="text-align:center;margin:0;max-width:130px"><button class="chip" id="lp">+</button></div>
   </div>
+  <div class="err" id="linkerr" style="margin-top:4px;line-height:1.5"></div>
   <div class="cta"><button class="btn" id="linkbtn">Link account &amp; save</button></div>
 </section>
 
@@ -134,19 +135,10 @@ input[type=range]{width:100%;accent-color:var(--p2)}
 
 <!-- SCANNER -->
 <section class="screen" id="s-scan">
-  <div class="hdr"><h2>Chart Scanner</h2></div>
-  <div class="card">
-    <div class="seg" id="smode"><button class="chip on" data-sm="live">Live market</button><button class="chip" data-sm="img">Chart image</button></div>
-    <div id="livebox"><p class="lbl">Symbol</p><div class="chips" id="scansym"></div><p class="note" style="margin-top:10px">Runs your strategy rules (H4 sweep → M15 CHoCH) on live prices.</p></div>
-    <div id="imgbox" style="display:none">
-    <p class="lbl">Upload or capture a chart</p>
-    <img id="prev" alt="chart preview">
-    <input id="file" type="file" accept="image/*" hidden>
-    <input id="cam" type="file" accept="image/*" capture="environment" hidden>
-    <div class="seg"><button class="chip" id="pick">Upload</button><button class="chip" id="shoot">Capture</button></div>
-    </div>
-  </div>
-  <div class="card" id="resc" style="display:none"><p class="lbl">Read <span class="demo" id="demotag">DEMO</span></p>
+  <div class="hdr"><h2>Chart Scanner</h2><span class="chip"><span class="dot ok"></span>Live market</span></div>
+  <div class="card"><p class="lbl">Symbol</p><div class="chips" id="scansym"></div>
+    <p class="note" style="margin-top:10px">Reads live prices and runs your strategy rules (H4 liquidity sweep → M15 CHoCH → entry zone, stop loss, take profit). Change pairs under Home → Pairs.</p></div>
+  <div class="card" id="resc" style="display:none"><p class="lbl">Read</p>
     <div class="res" id="res"></div><p class="note" id="resn" style="margin-top:10px"></p></div>
   <div class="cta"><button class="btn" id="scanbtn">Scan</button></div>
 </section>
@@ -250,7 +242,10 @@ $('#linkbtn').onclick=async()=>{
   const broker=$('#broker').value.trim(),login=$('#login').value.trim(),pw=$('#pass').value;
   if(!broker||!login||!pw){toast('Fill in server, account and password');return}
   if(!S.syms.length){toast('Choose at least one symbol');return}
-  if(S.api){try{const r=await fetch(S.api+'/accounts/link',{method:'POST',headers:{'Content-Type':'application/json','X-License':S.lic},body:JSON.stringify({platform:S.plat,server:broker,login,password:pw,symbols:S.syms,lot:S.lot})});if(!r.ok)throw 0}catch(e){toast('Link failed — check details / server');return}}
+  $('#linkerr').textContent='';const lb=$('#linkbtn');lb.disabled=true;lb.textContent='Linking… (up to a minute)';
+  try{if(S.api){const r=await fetch(S.api+'/accounts/link',{method:'POST',headers:{'Content-Type':'application/json','X-License':S.lic},body:JSON.stringify({platform:S.plat,server:broker,login,password:pw,symbols:S.syms,lot:S.lot})});const j=await r.json().catch(()=>({}));if(!r.ok||!j.ok){$('#linkerr').textContent=j.error||('Link failed ('+r.status+')');return}}}
+  catch(e){$('#linkerr').textContent='Cannot reach the server. Check your internet and try again.';return}
+  finally{lb.disabled=false;lb.textContent='Link account & save'}
   S.broker=broker;S.login=login;S.linked=true;$('#pass').value='';save();log(`Linked ${S.plat} account ${login} @ ${broker}`);render();toast('Account linked');go('home')};
 
 /* ---- engine (demo simulation unless a backend is configured) ---- */
@@ -275,31 +270,18 @@ $('#conf').oninput=e=>{S.conf=+e.target.value;$('#confv').textContent=S.conf;sav
 $('#maxt').oninput=e=>{S.maxt=+e.target.value;$('#maxv').textContent=S.maxt;save()};
 document.addEventListener('click',e=>{const x=e.target.closest('[data-close]');if(!x)return;let id=x.dataset.close;if(!S.api)id=+id;if(S.api){fetch(S.api+'/positions/close',{method:'POST',headers:{'Content-Type':'application/json','X-License':S.lic},body:JSON.stringify({id})}).then(r=>r.json()).then(j=>toast(j.ok?'Close sent':(j.error||'Close failed'))).catch(()=>toast('Server unreachable'));return}S.pos=S.pos.filter(p=>p.id!==id);save();log(`Closed position #${id}`);renderPos()});
 
-/* ---- scanner ---- */
-let img=null,smode='live',ssym='';
-$$('[data-sm]').forEach(b=>b.onclick=()=>{smode=b.dataset.sm;$$('[data-sm]').forEach(x=>x.classList.toggle('on',x===b));$('#livebox').style.display=smode==='live'?'block':'none';$('#imgbox').style.display=smode==='img'?'block':'none';$('#resc').style.display='none'});
+/* ---- scanner (live market only) ---- */
+let ssym='';
 function renderScanSyms(){if(!S.syms.includes(ssym))ssym=S.syms[0]||'';chipSet($('#scansym'),S.syms,[ssym],v=>{ssym=v;renderScanSyms()})}
-const take=f=>{if(!f)return;const u=URL.createObjectURL(f),im=new Image();
-  im.onload=()=>{const sc=Math.min(1,1600/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*sc);c.height=Math.round(im.height*sc);c.getContext('2d').drawImage(im,0,0,c.width,c.height);img=c.toDataURL('image/jpeg',.85);URL.revokeObjectURL(u);const p=$('#prev');p.src=img;p.style.display='block';$('#resc').style.display='none'};
-  im.onerror=()=>toast('Could not read that image');im.src=u};
-$('#pick').onclick=()=>$('#file').click();$('#shoot').onclick=()=>$('#cam').click();
-$('#file').onchange=e=>take(e.target.files[0]);$('#cam').onchange=e=>take(e.target.files[0]);
 $('#scanbtn').onclick=async()=>{
-  let d=null;
-  if(smode==='live'){
-    if(!S.api){toast('Server not connected');return}
-    if(!ssym){toast('Pick a symbol (Home → Pairs)');return}
-    $('#scanbtn').textContent='Scanning…';
-    try{const r=await fetch(S.api+'/scan/live',{method:'POST',headers:{'Content-Type':'application/json','X-License':S.lic},body:JSON.stringify({symbol:ssym})});const j=await r.json();if(r.ok&&j.ok)d=j;else{toast(j.error||'Scan failed');$('#scanbtn').textContent='Scan';return}}catch(e){toast('Server unreachable');$('#scanbtn').textContent='Scan';return}
-    $('#scanbtn').textContent='Scan';
-    $('#res').innerHTML=[['Bias',d.bias],['Entry zone',d.entry],['Stop loss',d.sl],['Take profit',d.tp]].map(([x,y])=>`<div><small>${x}</small><b>${y}</b></div>`).join('');
-    $('#resn').textContent=ssym+' · '+(d.note||'');$('#demotag').style.display='none';$('#resc').style.display='block';log('Live scan '+ssym+': '+d.bias);return}
-  if(!img){toast('Upload or capture a chart first');return}
-  if(S.api){try{const r=await fetch(S.api+'/scan',{method:'POST',headers:{'Content-Type':'application/json','X-License':S.lic},body:JSON.stringify({image:img})});const j=await r.json();if(r.ok&&j.ok)d=j;else toast(j.error||'Scan unavailable')}catch(e){toast('Scan server unreachable');return}}
-  const demo=!d;
-  if(demo){d={bias:'— (demo)',entry:'—',sl:'—',tp:'—',note:'Demo mode: no real chart analysis ran. Set a Server API in Settings to enable real reads.'}}
-  $('#res').innerHTML=[['Bias',d.bias],['Entry zone',d.entry],['Stop loss',d.sl],['Take profit',d.tp]].map(([a,b])=>`<div><small>${a}</small><b>${b}</b></div>`).join('');
-  $('#resn').textContent=d.note||'';$('#demotag').style.display=demo?'inline-block':'none';$('#resc').style.display='block';log('Chart scanned')};
+  if(!S.api){toast('Server not connected');return}
+  if(!ssym){toast('Pick a symbol (Home → Pairs)');return}
+  const b=$('#scanbtn');b.disabled=true;b.textContent='Scanning…';
+  try{const r=await fetch(S.api+'/scan/live',{method:'POST',headers:{'Content-Type':'application/json','X-License':S.lic},body:JSON.stringify({symbol:ssym})});const j=await r.json();
+    if(!(r.ok&&j.ok)){toast(j.error||'Scan failed');return}
+    $('#res').innerHTML=[['Bias',j.bias],['Entry zone',j.entry],['Stop loss',j.stop??j.sl],['Take profit',j.tp]].map(([x,y])=>`<div><small>${x}</small><b>${y}</b></div>`).join('');
+    $('#resn').textContent=ssym+' · '+(j.note||'');$('#resc').style.display='block';log('Live scan '+ssym+': '+j.bias)}
+  catch(e){toast('Server unreachable')}finally{b.disabled=false;b.textContent='Scan'}};
 
 /* ---- settings ---- */
 $('#api').onchange=e=>{S.api=e.target.value.trim().replace(/\/$/,'');save();toast('Saved')};
