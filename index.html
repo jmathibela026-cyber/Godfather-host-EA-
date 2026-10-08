@@ -172,7 +172,7 @@ input[type=range]{width:100%;accent-color:var(--p2)}
 <script>
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const SYMS=['XAUUSD','EURUSD','GBPUSD','USDJPY','AUDUSD','USDCAD','NZDUSD','USDCHF','BTCUSD','US30','NAS100'];
-const STRATS=['ICT','Liquidity'];
+const STRATS=['ICT','Liquidity','Trend Following'];
 const CONFS=['Accumulation/Distribution'];
 const def={lic:null,plat:'MT5',broker:'',login:'',linked:false,syms:['XAUUSD'],lot:0.05,strats:['ICT'],confirm:[],conf:85,maxt:5,api:'',logs:[],pos:[],running:false};
 let S;try{S=Object.assign({},def,JSON.parse(localStorage.getItem('gf')||'{}'))}catch(e){S={...def}}
