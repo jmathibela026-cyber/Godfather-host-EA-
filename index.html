@@ -117,6 +117,7 @@ input[type=range]{width:100%;accent-color:var(--p2)}
 <section class="screen" id="s-smart">
   <div class="hdr"><h2>Smart Trade Engine</h2><span class="chip"><span class="dot" id="edot"></span><span id="est">Stopped</span></span></div>
   <div class="card"><p class="lbl">Strategies</p><div class="chips" id="stratchips"></div></div>
+  <div class="card"><p class="lbl">Confirmation filters</p><div class="chips" id="confchips"></div><p class="note" style="margin-top:8px">A trade is only taken when the selected filter agrees with the setup direction.</p></div>
   <div class="card"><p class="lbl">Min confidence — <span id="confv">85</span>%</p><input type="range" id="conf" min="50" max="99" value="85"></div>
   <div class="card"><p class="lbl">Max concurrent trades — <span id="maxv">5</span></p><input type="range" id="maxt" min="1" max="10" value="5"></div>
   <div class="card"><p class="lbl">Open positions</p><div id="pos"><p class="note">No open positions.</p></div></div>
@@ -172,7 +173,8 @@ input[type=range]{width:100%;accent-color:var(--p2)}
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const SYMS=['XAUUSD','EURUSD','GBPUSD','USDJPY','AUDUSD','USDCAD','NZDUSD','USDCHF','BTCUSD','US30','NAS100'];
 const STRATS=['ICT','SMC','Candlestick Patterns','Trend Following','Liquidity Sweeps','Order Blocks','Fair Value Gaps'];
-const def={lic:null,plat:'MT5',broker:'',login:'',linked:false,syms:['XAUUSD'],lot:0.05,strats:['ICT','SMC'],conf:85,maxt:5,api:'',logs:[],pos:[],running:false};
+const CONFS=['Accumulation/Distribution'];
+const def={lic:null,plat:'MT5',broker:'',login:'',linked:false,syms:['XAUUSD'],lot:0.05,strats:['ICT','SMC'],confirm:[],conf:85,maxt:5,api:'',logs:[],pos:[],running:false};
 let S;try{S=Object.assign({},def,JSON.parse(localStorage.getItem('gf')||'{}'))}catch(e){S={...def}}
 const DEFAULT_API='https://godfather-ea-hosting-srever.onrender.com'; // <- put your server URL here once, e.g. 'https://godfather-ea.onrender.com'
 try{const q=new URLSearchParams(location.search).get('api');if(q&&/^https?:\/\//.test(q))S.api=q.replace(/\/$/,'')}catch(e){}
@@ -215,6 +217,7 @@ function render(){
   chipSet($('#symchips'),SYMS,S.syms,v=>{S.syms=toggle(S.syms,v);save();render()});
   chipSet($('#pairchips'),SYMS,S.syms,v=>{S.syms=toggle(S.syms,v);save();render()});
   chipSet($('#stratchips'),STRATS,S.strats,v=>{S.strats=toggle(S.strats,v);save();render()});
+  chipSet($('#confchips'),CONFS,S.confirm||[],v=>{S.confirm=toggle(S.confirm||[],v);save();render()});
   $('#lot').value=S.lot;$('#conf').value=S.conf;$('#confv').textContent=S.conf;$('#maxt').value=S.maxt;$('#maxv').textContent=S.maxt;
   $('#edot').className='dot'+(S.running?' ok':'');$('#est').textContent=S.running?'Running':'Stopped';
   const b=$('#engbtn');b.textContent=S.running?'■ Stop engine':'▶ Start engine';b.classList.toggle('stop',S.running);
@@ -244,7 +247,7 @@ let timer=null;
 async function startEngine(){
   if(!S.linked){toast('Link your MT4/MT5 account first');go('link');return}
   if(!S.strats.length){toast('Pick at least one strategy');return}
-  if(S.api){try{const r=await fetch(S.api+'/engine/start',{method:'POST',headers:{'Content-Type':'application/json','X-License':S.lic},body:JSON.stringify({symbols:S.syms,lot:S.lot,conf:S.conf,maxt:S.maxt,strats:S.strats})});const j=await r.json();if(!r.ok){toast(j.error||'Engine refused to start');return}if(j.dryRun)toast('Server is in DRY RUN — no real orders')}catch(e){toast('Server unreachable');return}S.since=0}
+  if(S.api){try{const r=await fetch(S.api+'/engine/start',{method:'POST',headers:{'Content-Type':'application/json','X-License':S.lic},body:JSON.stringify({symbols:S.syms,lot:S.lot,conf:S.conf,maxt:S.maxt,strats:S.strats,confirm:(S.confirm||[]).map(x=>x==='Accumulation/Distribution'?'ad':x)})});const j=await r.json();if(!r.ok){toast(j.error||'Engine refused to start');return}if(j.dryRun)toast('Server is in DRY RUN — no real orders')}catch(e){toast('Server unreachable');return}S.since=0}
   S.running=true;save();if(!S.api)log(`Engine started — ${S.syms.join(', ')} · min confidence ${S.conf}%`);render();tick()}
 function stopEngine(){S.running=false;save();clearTimeout(timer);if(S.api){fetch(S.api+'/engine/stop',{method:'POST',headers:{'X-License':S.lic}}).catch(()=>{})}else log('Engine stopped');render()}
 function tick(){clearTimeout(timer);if(!S.running)return;
