@@ -154,6 +154,9 @@ input[type=range]{width:100%;accent-color:var(--p2)}
   <div class="card"><p class="lbl">Server API (optional)</p>
     <input id="api" type="text" placeholder="https://your-backend.example.com">
     <p class="note">Leave empty to run in demo mode. When set, the app sends licence activation, link, engine and scan requests to this backend.</p></div>
+  <div class="card"><p class="lbl">Market data key (Twelve Data)</p>
+    <input id="tdkey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste your Twelve Data API key">
+    <p class="note">Saved on this device and sent with each scan and engine start, so the scanner keeps working even if the server restarts.</p></div>
   <div class="card"><p class="lbl">Install</p><button class="btn ghost" id="inst">Install app</button>
     <p class="note" style="margin-top:8px">iPhone: Share → Add to Home Screen. Android: menu → Install app.</p></div>
   <div class="card"><button class="btn stop" id="reset">Deactivate &amp; reset</button></div>
@@ -174,7 +177,7 @@ const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const SYMS=['XAUUSD','EURUSD','GBPUSD','USDJPY','AUDUSD','USDCAD','NZDUSD','USDCHF','BTCUSD','US30','NAS100'];
 const STRATS=['ICT','Liquidity','Trend Following'];
 const CONFS=['Accumulation/Distribution'];
-const def={lic:null,plat:'MT5',broker:'',login:'',linked:false,syms:['XAUUSD'],lot:0.05,strats:['ICT'],confirm:[],conf:85,maxt:5,api:'',logs:[],pos:[],running:false};
+const def={lic:null,plat:'MT5',broker:'',login:'',linked:false,syms:['XAUUSD'],lot:0.05,strats:['ICT'],confirm:[],tdKey:'',conf:85,maxt:5,api:'',logs:[],pos:[],running:false};
 let S;try{S=Object.assign({},def,JSON.parse(localStorage.getItem('gf')||'{}'))}catch(e){S={...def}}
 const DEFAULT_API='https://godfather-ea-hosting-srever.onrender.com'; // <- put your server URL here once, e.g. 'https://godfather-ea.onrender.com'
 try{const q=new URLSearchParams(location.search).get('api');if(q&&/^https?:\/\//.test(q))S.api=q.replace(/\/$/,'')}catch(e){}
@@ -223,7 +226,7 @@ function render(){
   $('#edot').className='dot'+(S.running?' ok':'');$('#est').textContent=S.running?'Running':'Stopped';
   const b=$('#engbtn');b.textContent=S.running?'■ Stop engine':'▶ Start engine';b.classList.toggle('stop',S.running);
   $('#licinfo').textContent=S.lic?`Active · ${S.lic.slice(0,7)}••••-••••`:'Not activated';
-  $('#api').value=S.api||'';renderPos();renderLogs();renderScanSyms();
+  $('#api').value=S.api||'';$('#tdkey').value=S.tdKey||'';renderPos();renderLogs();renderScanSyms();
   const R=S.robot,cr=$('#hcrest');$('#hname').textContent=R?R.name:'Godfather Host';$('#hsub').textContent=R?(R.author?'by '+R.author+' · ':'')+R.platform:'Always-on EA hosting for MT4 & MT5';
   if(R&&R.cover){cr.textContent='';cr.style.backgroundImage=`url(${R.cover})`;cr.style.backgroundSize='cover';cr.style.backgroundPosition='center'}else{cr.textContent='G';cr.style.backgroundImage=''}
 }
@@ -248,7 +251,7 @@ let timer=null;
 async function startEngine(){
   if(!S.linked){toast('Link your MT4/MT5 account first');go('link');return}
   if(!S.strats.length){toast('Pick at least one strategy');return}
-  if(S.api){try{const r=await fetch(S.api+'/engine/start',{method:'POST',headers:{'Content-Type':'application/json','X-License':S.lic},body:JSON.stringify({symbols:S.syms,lot:S.lot,conf:S.conf,maxt:S.maxt,strats:S.strats,confirm:(S.confirm||[]).map(x=>x==='Accumulation/Distribution'?'ad':x)})});const j=await r.json();if(!r.ok){toast(j.error||'Engine refused to start');return}if(j.dryRun)toast('Server is in DRY RUN — no real orders')}catch(e){toast('Server unreachable');return}S.since=0}
+  if(S.api){try{const r=await fetch(S.api+'/engine/start',{method:'POST',headers:{'Content-Type':'application/json','X-License':S.lic},body:JSON.stringify({symbols:S.syms,lot:S.lot,conf:S.conf,maxt:S.maxt,twelveKey:S.tdKey||undefined,strats:S.strats,confirm:(S.confirm||[]).map(x=>x==='Accumulation/Distribution'?'ad':x)})});const j=await r.json();if(!r.ok){toast(j.error||'Engine refused to start');return}if(j.dryRun)toast('Server is in DRY RUN — no real orders')}catch(e){toast('Server unreachable');return}S.since=0}
   S.running=true;save();if(!S.api)log(`Engine started — ${S.syms.join(', ')} · min confidence ${S.conf}%`);render();tick()}
 function stopEngine(){S.running=false;save();clearTimeout(timer);if(S.api){fetch(S.api+'/engine/stop',{method:'POST',headers:{'X-License':S.lic}}).catch(()=>{})}else log('Engine stopped');render()}
 function tick(){clearTimeout(timer);if(!S.running)return;
@@ -272,13 +275,14 @@ $('#scanbtn').onclick=async()=>{
   if(!S.api){toast('Server not connected');return}
   if(!ssym){toast('Pick a symbol (Home → Pairs)');return}
   const b=$('#scanbtn');b.disabled=true;b.textContent='Scanning…';
-  try{const r=await fetch(S.api+'/scan/live',{method:'POST',headers:{'Content-Type':'application/json','X-License':S.lic},body:JSON.stringify({symbol:ssym})});const j=await r.json();
+  try{const r=await fetch(S.api+'/scan/live',{method:'POST',headers:{'Content-Type':'application/json','X-License':S.lic},body:JSON.stringify({symbol:ssym,twelveKey:S.tdKey||undefined})});const j=await r.json();
     if(!(r.ok&&j.ok)){toast(j.error||'Scan failed');return}
     $('#res').innerHTML=[['Bias',j.bias],['Entry zone',j.entry],['Stop loss',j.stop??j.sl],['Take profit',j.tp]].map(([x,y])=>`<div><small>${x}</small><b>${y}</b></div>`).join('');
     $('#resn').textContent=ssym+' · '+(j.note||'');$('#resc').style.display='block';log('Live scan '+ssym+': '+j.bias)}
   catch(e){toast('Server unreachable')}finally{b.disabled=false;b.textContent='Scan'}};
 
 /* ---- settings ---- */
+$('#tdkey').onchange=e=>{S.tdKey=e.target.value.trim();save();toast(S.tdKey?'Data key saved':'Data key cleared')};
 $('#api').onchange=e=>{S.api=e.target.value.trim().replace(/\/$/,'');save();toast('Saved')};
 $('#reset').onclick=()=>{if(confirm('Deactivate and clear all data on this device?')){try{localStorage.removeItem('gf')}catch(e){}location.reload()}};
 let dp;addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e});
